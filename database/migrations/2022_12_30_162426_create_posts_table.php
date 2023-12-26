@@ -17,7 +17,8 @@ return new class extends Migration
             $table->id();
             $table->string('title')->nullable();
             $table->text('description')->nullable();
-            $table->timestamps();
+            $table->unsignedInteger('createdTime');
+            $table->unsignedInteger('updatedTime');
         });
     }
 

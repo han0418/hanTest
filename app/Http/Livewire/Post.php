@@ -4,6 +4,8 @@ namespace App\Http\Livewire;
 
 use Livewire\Component;
 use App\Models\Post as Posts;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class Post extends Component
 {
@@ -40,7 +42,9 @@ class Post extends Component
      */
     public function render()
     {
-        $this->posts = Posts::select('id', 'title', 'description')->get();
+        $query = "
+            SELECT * FROM `posts`";
+        $this->posts = DB::select($query);
         return view('livewire.post');
     }
 
@@ -54,7 +58,7 @@ class Post extends Component
         $this->addPost = true;
         $this->updatePost = false;
     }
-     /**
+    /**
       * store the user inputted post data in the posts table
       * @return void
       */
@@ -62,10 +66,30 @@ class Post extends Component
     {
         $this->validate(); 
         try {
-            Posts::create([
-                'title' => $this->title,
-                'description' => $this->description
-            ]);
+            $query = '
+                INSERT INTO `posts` 
+                (
+                    `title`,
+                    `description`,
+                    `createdTime`,
+                    `updatedTime`
+                )
+                VALUES
+                (
+                    :title,
+                    :description,
+                    :createdTime,
+                    :updatedTime
+                )';
+
+            $binding = array(
+                ':title' => $this->title,
+                ':description' => $this->description,
+                ':createdTime' => Carbon::now()->timestamp,
+                ':updatedTime' => Carbon::now()->timestamp
+            );
+            DB::insert($query, $binding);
+
             session()->flash('success','Post Created Successfully!!');
             $this->resetFields();
             $this->addPost = false;
@@ -88,8 +112,8 @@ class Post extends Component
                 $this->title = $post->title;
                 $this->description = $post->description;
                 $this->postId = $post->id;
-                $this->updatePost = true;
                 $this->addPost = false;
+                $this->updatePost = true;
             }
         } catch (\Exception $ex) {
             session()->flash('error','Something goes wrong!!');
@@ -105,10 +129,21 @@ class Post extends Component
     {
         $this->validate();
         try {
-            Posts::whereId($this->postId)->update([
-                'title' => $this->title,
-                'description' => $this->description
-            ]);
+            $query = "
+                UPDATE `posts`
+                SET   `title` = :title
+                    , `description` = :description
+                    , `updatedTime` = :updatedTime
+                WHERE  `id` = :id";
+            $binding = array(
+                ':title' => $this->title,
+                ':description' => $this->description,
+                ':id' => $this->postId,
+                ':updatedTime' => Carbon::now()->timestamp
+            );
+
+            DB::update($query, $binding);
+
             session()->flash('success','Post Updated Successfully!!');
             $this->resetFields();
             $this->updatePost = false;
@@ -136,7 +171,16 @@ class Post extends Component
     public function deletePost($id)
     {
         try{
-            Posts::find($id)->delete();
+            $query = "
+                DELETE FROM `posts` 
+                WHERE `id` = :id";
+
+            $binding = array(
+                ':id' => $id
+            );
+
+            DB::delete($query, $binding);
+
             session()->flash('success',"Post Deleted Successfully!!");
         }catch(\Exception $e){
             session()->flash('error',"Something goes wrong!!");
